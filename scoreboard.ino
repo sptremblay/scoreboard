@@ -2,10 +2,13 @@
 #include <EEPROM.h>
 
 //Pins
-#define BUTTON_START_STOP_PIN 11
-#define CHRONO_DATA_PIN 6
-#define SCORE_HOME_DATA_PIN 7
+#define BUTTON_START_STOP_PIN 12
+#define CHRONO_DATA_PIN 7
+#define SCORE_HOME_DATA_PIN 5
 #define SCORE_AWAY_DATA_PIN 8
+#define PERIOD_DATA_PIN 9
+
+#define HORN_RELAY_PIN 11
 
 #define BUTTON_HOME_SCORE_UP_PIN 9
 #define CLOCK_PIN 13
@@ -14,7 +17,7 @@
 #define LED_SEGMENTS 3 //number leds per segment
 #define SEGMENT 7 //number of segment
 #define NUM_LEDS_DIGIT LED_SEGMENTS*SEGMENT //number leds per digit
-#define BRIGHTNESS  60
+#define BRIGHTNESS  128
 
 int lastButtonState;
 int start_stop_buttonState;
@@ -46,16 +49,30 @@ void setup() {
 
   // Uncomment/edit one of the following lines for your leds arrangement.
   setupChrono();
-  //setupScores();
+  setupScores();
+  setupPeriod();
+
+  pinMode(HORN_RELAY_PIN, OUTPUT);
 
   pinMode(BUTTON_START_STOP_PIN, INPUT);
   pinMode(BUTTON_HOME_SCORE_UP_PIN, INPUT);
 
-  chrono_started = false;
+  chrono_started = true;
 }
 
+bool first = true;
 void loop() {
+
+  /*if(first == true){
+    digitalWrite(HORN_RELAY_PIN, LOW);
+    delay(200);
+    digitalWrite(HORN_RELAY_PIN, HIGH);
+    first = false;
+  }*/
+  
   SetChronoTime();
+  displayScores();
+  displayPeriod();
   switch (ReadButton()) {
     case 1:
       chrono_started = true;
@@ -99,26 +116,6 @@ int ReadButton() {
       Serial.println("stop");
     }
   }
-  /*if (start_stop_buttonState == 1 && lastButtonState == 0 &&  chrono_started == false) {
-    button_selected = 1;
-    lastButtonState = 1;
-    Serial.println("Start");
-    delay(5);
-    } else if (start_stop_buttonState == 1 && lastButtonState == 0  &&  chrono_started == true) {
-    lastButtonState = 1;
-    button_selected = 2;
-    Serial.println("Stop");
-    delay(5);
-    } else if (score_home_up_buttonState == 1 && lastButtonState == 0 ) {
-    lastButtonState = 1;
-    button_selected = 3;
-    delay(5);
-    Serial.print("Score Home UP");
-    }
-    else {
-    lastButtonState = start_stop_buttonState || score_home_up_buttonState;
-    }
-  */
   start_stop_lastButtonState = reading1;
   return button_selected;
 }
@@ -128,22 +125,29 @@ void setNumber(CRGB* leds, int number, int offset) {
   int ones = (number % 10);
   int tens = ((number / 10) % 10);
   for (int k = 0; k < SEGMENT; k++) {
-    setDigit(leds, k, charLayout[ones][k], offset);
+    setDigit(leds, k, charLayout[ones][k], offset, LED_SEGMENTS);
   }
 
   for (int k = 0; k < SEGMENT; k++) {
-    setDigit(leds, k, charLayout[tens][k], offset + NUM_LEDS_DIGIT);
+    setDigit(leds, k, charLayout[tens][k], offset + NUM_LEDS_DIGIT, LED_SEGMENTS);
   }
 }
 
-void setDigit(CRGB* leds, int segment, int ledState, int offset) {
-  int start_loc = LED_SEGMENTS * segment + offset;
+void setSmallNumber(CRGB* leds, int number, int offset) {
+  int ones = (number % 10);
+  for (int k = 0; k < SEGMENT; k++) {
+    setDigit(leds, k, charLayout[ones][k], offset, 2);
+  }
+}
+
+void setDigit(CRGB* leds, int segment, int ledState, int offset, int numberLeds) {
+  int start_loc = numberLeds * segment + offset;
   if (ledState == 0) {
-    for (int loc = start_loc; loc < start_loc + LED_SEGMENTS; loc++) {
+    for (int loc = start_loc; loc < start_loc + numberLeds; loc++) {
       leds[loc] = CRGB::Black;
     }
   } else {
-    for (int loc = start_loc; loc < start_loc + LED_SEGMENTS; loc++) {
+    for (int loc = start_loc; loc < start_loc + numberLeds; loc++) {
       leds[loc] = CRGB::White;
     }
   }
