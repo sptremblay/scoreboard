@@ -1,5 +1,9 @@
 #include <FastLED.h>
 #include <EEPROM.h>
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+
 
 //Pins
 #define BUTTON_START_STOP_PIN 12
@@ -18,6 +22,9 @@
 #define SEGMENT 7 //number of segment
 #define NUM_LEDS_DIGIT LED_SEGMENTS*SEGMENT //number leds per digit
 #define BRIGHTNESS  128
+
+RF24 radio(22, 23); // CE, CSN
+const byte address[6] = "00001";
 
 int lastButtonState;
 int start_stop_buttonState;
@@ -57,68 +64,34 @@ void setup() {
   pinMode(BUTTON_START_STOP_PIN, INPUT);
   pinMode(BUTTON_HOME_SCORE_UP_PIN, INPUT);
 
+  radio.begin();
+  radio.openReadingPipe(0, address);   //Setting the address at which we will receive the data
+  radio.setPALevel(RF24_PA_LOW);       //You can set this as minimum or maximum depending on the distance between the transmitter and receiver.
+  radio.startListening();              //This sets the module as receiver
+
   chrono_started = true;
 }
 
 bool first = true;
 void loop() {
 
-  /*if(first == true){
-    digitalWrite(HORN_RELAY_PIN, LOW);
-    delay(200);
-    digitalWrite(HORN_RELAY_PIN, HIGH);
-    first = false;
-  }*/
-  
   SetChronoTime();
   displayScores();
   displayPeriod();
-  switch (ReadButton()) {
-    case 1:
-      chrono_started = true;
-      break;
-    case 2:
-      chrono_started = false;
-      break;
-    case 3:
-      incrementScore(0, 1);
-      break;
-    case 4:
-      incrementScore(1, 1);
-      break;
-  }
+
+  
+  /*int commandId =  0;
+  if (radio.available())              //Looking for the data.
+  {
+    radio.read(&commandId, sizeof(commandId));    //Reading the data
+    if (commandId>0) {
+      Serial.println("command: " + commandId);
+    }
+  }*/
 
 }
 
-int ReadButton() {
-  int button_selected = 0;
-  int reading1 = digitalRead(BUTTON_START_STOP_PIN);
-  int score_home_up_buttonState = digitalRead(BUTTON_HOME_SCORE_UP_PIN);
 
-  //Serial.println(reading1);
-
-  if (start_stop_buttonState != start_stop_lastButtonState) {
-    start_stop_button_debounce_time = millis();
-  }
-
-  if ((millis() - start_stop_button_debounce_time) > debounce_delay) {
-    start_stop_buttonState = reading1;
-    // If the button state has changed to pressed.
-    if (start_stop_buttonState != start_stop_lastButtonState &&
-        start_stop_buttonState == HIGH && chrono_started == false) {
-      button_selected = 1;
-      Serial.println("start");
-    }
-
-    if (start_stop_buttonState != start_stop_lastButtonState &&
-        start_stop_buttonState == HIGH && chrono_started == true) {
-      button_selected = 2;
-      Serial.println("stop");
-    }
-  }
-  start_stop_lastButtonState = reading1;
-  return button_selected;
-}
 
 // Display functions ....
 void setNumber(CRGB* leds, int number, int offset) {

@@ -3,7 +3,7 @@
 
 CRGB period_leds[PERIOD_LEDS];
 
-int period = 2;
+int period = 1;
 
 void setupPeriod() {
   FastLED.addLeds<WS2811, PERIOD_DATA_PIN, RGB>(period_leds, PERIOD_LEDS);
